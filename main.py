@@ -92,14 +92,14 @@ if __name__ == "__main__":
         print("  - If exactly one PDF file is found, it's converted to PNGs.")
         print("  - If multiple PNG files are found, they are combined into a single PDF.")
         print("--------------------------------------------------")
-        input("Press any key to exit...")
+        # input("Press any key to exit...") # Removed
         sys.exit(1)
 
     target_folder = sys.argv[1]
 
     if not os.path.isdir(target_folder):
         print(f"Error: The specified path is not a valid directory: {target_folder}")
-        input("Press any key to exit...")
+        # input("Press any key to exit...") # Removed
         sys.exit(1)
 
     # Define and create the base output directory
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         print(f"Output will be saved to: {os.path.abspath(output_base_dir)}")
     except Exception as e:
         print(f"Error creating output directory '{output_base_dir}': {e}")
-        input("Press any key to exit...")
+        # input("Press any key to exit...") # Removed
         sys.exit(1)
 
     pdf_files = []
@@ -127,7 +127,7 @@ if __name__ == "__main__":
                     png_files.append(file_path)
     except Exception as e:
         print(f"Error reading directory contents: {e}")
-        input("Press any key to exit...")
+        # input("Press any key to exit...") # Removed
         sys.exit(1)
 
     overall_success = True # Track success across multiple operations
@@ -217,4 +217,4 @@ if __name__ == "__main__":
     print(f"Check the '{os.path.abspath(output_base_dir)}' directory for results.")
     print("--------------------------------------------------")
 
-    input("Press any key to exit...")
+    # input("Press any key to exit...") # Removed
