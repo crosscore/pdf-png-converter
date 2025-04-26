@@ -102,6 +102,16 @@ if __name__ == "__main__":
         input("Press any key to exit...")
         sys.exit(1)
 
+    # Define and create the base output directory
+    output_base_dir = "output"
+    try:
+        os.makedirs(output_base_dir, exist_ok=True)
+        print(f"Output will be saved to: {os.path.abspath(output_base_dir)}")
+    except Exception as e:
+        print(f"Error creating output directory '{output_base_dir}': {e}")
+        input("Press any key to exit...")
+        sys.exit(1)
+
     pdf_files = []
     png_files = []
     print(f"Scanning folder: {target_folder}")
@@ -120,22 +130,29 @@ if __name__ == "__main__":
         input("Press any key to exit...")
         sys.exit(1)
 
-    success = False
+    overall_success = True # Track success across multiple operations
+    processed_something = False # Flag to check if any operation was performed
     num_pdf = len(pdf_files)
     num_png = len(png_files)
 
     # --- Determine operation mode based on folder content ---
-    if num_pdf == 1 and num_png == 0:
-        # --- PDF -> PNG Mode ---
-        pdf_path = pdf_files[0]
-        pdf_base_name = os.path.splitext(os.path.basename(pdf_path))[0]
-        output_dir = os.path.join(target_folder, pdf_base_name + "_png")
-        print(f"Mode: PDF -> PNG")
-        success = convert_pdf_to_png(pdf_path, output_dir)
+    if num_pdf >= 1 and num_png == 0:
+        # --- PDF -> PNG Mode (Process all found PDFs) ---
+        print(f"Mode: PDF -> PNG (Found {num_pdf} PDF files)")
+        processed_something = True
+        for pdf_path in pdf_files:
+            pdf_base_name = os.path.splitext(os.path.basename(pdf_path))[0]
+            # Output directory inside ./output
+            output_dir = os.path.join(output_base_dir, pdf_base_name + "_png")
+            print(f"\nProcessing '{os.path.basename(pdf_path)}'...")
+            success = convert_pdf_to_png(pdf_path, output_dir)
+            if not success:
+                overall_success = False # Mark failure if any conversion fails
 
     elif num_png > 1 and num_pdf == 0:
         # --- PNG -> PDF Mode ---
-        print(f"Mode: PNG -> PDF")
+        print(f"Mode: PNG -> PDF (Found {num_png} PNG files)")
+        processed_something = True
         image_paths_unsorted = png_files
 
         # <<< Sort the file path list using natural sort >>>
@@ -157,7 +174,8 @@ if __name__ == "__main__":
         if not output_prefix:
             output_prefix = "combined" # Default name if prefix is empty
 
-        output_base_name = os.path.join(target_folder, output_prefix) # Output in the target folder
+        # Output PDF inside ./output
+        output_base_name = os.path.join(output_base_dir, output_prefix)
         output_pdf_path = output_base_name + ".pdf"
         count = 1
         # Handle potential filename conflicts
@@ -167,23 +185,36 @@ if __name__ == "__main__":
 
         # Pass the sorted image_paths for PDF conversion
         success = convert_png_to_pdf(image_paths, output_pdf_path)
+        if not success:
+            overall_success = False
 
     else:
-        # --- Invalid file combination ---
-        print("Error: The folder must contain either exactly one PDF file or multiple PNG files.")
-        if num_pdf > 0:
-            print(f"  - Found {num_pdf} PDF file(s): {[os.path.basename(f) for f in pdf_files]}")
-        if num_png > 0:
-            print(f"  - Found {num_png} PNG file(s): {[os.path.basename(f) for f in png_files]}")
-        if num_pdf == 0 and num_png == 0:
-            print("  - No PDF or PNG files found in the specified folder.")
-        elif num_png == 1 and num_pdf == 0:
+        # --- Invalid file combination or no files ---
+        processed_something = False # No valid operation determined
+        print("Error: Invalid file combination or no processable files found in the target folder.")
+        if num_pdf > 0 and num_png > 0:
+            print("  - Found both PDF and PNG files. Please provide a folder with only PDFs or only PNGs.")
+            print(f"    PDF(s): {[os.path.basename(f) for f in pdf_files]}")
+            print(f"    PNG(s): {[os.path.basename(f) for f in png_files]}")
+        elif num_pdf == 0 and num_png == 1:
              print("  - Found only one PNG file. Need multiple PNGs to combine into a PDF.")
+             print(f"    PNG: {os.path.basename(png_files[0])}")
+        elif num_pdf == 0 and num_png == 0:
+            print("  - No PDF or PNG files found in the specified folder.")
+        # The case num_pdf > 1 and num_png == 0 is now handled above
+        overall_success = False # Mark as failure
 
-    # Display message based on processing result and wait before closing the window
-    if success:
-        print("Processing completed successfully.")
+    # Display message based on processing result
+    print("\n--------------------------------------------------")
+    if processed_something:
+        if overall_success:
+            print("Processing completed successfully.")
+        else:
+            print("Processing completed, but some errors occurred.")
     else:
-        print("An error occurred during processing or the folder content was invalid.")
+        # Error message was already printed in the 'else' block above
+        print("No processing was performed due to errors or invalid folder content.")
+    print(f"Check the '{os.path.abspath(output_base_dir)}' directory for results.")
+    print("--------------------------------------------------")
 
     input("Press any key to exit...")
