@@ -12,7 +12,7 @@ def natural_sort_key(s):
     # Example: "image10.png" -> ('image', 10, '.png')
     # This ensures that the numeric parts are compared correctly
     return [int(text) if text.isdigit() else text.lower()
-            for text in re.split(r'([0-9]+)', os.path.basename(s))] # Sort by filename part only
+            for text in re.split(r'(\d+)', os.path.basename(s))] # Sort by filename part only (Changed regex to split by digit)
 
 def convert_pdf_to_png(pdf_path, output_dir):
     """Convert each page of a PDF file into a PNG image."""
@@ -21,12 +21,14 @@ def convert_pdf_to_png(pdf_path, output_dir):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         print(f"Converting '{os.path.basename(pdf_path)}' to PNG...")
+        pdf_base_name = os.path.splitext(os.path.basename(pdf_path))[0] # Get PDF base name
         for page_num in range(len(doc)):
             page = doc.load_page(page_num)
             # Default resolution. Change to (2, 2) etc. if higher resolution is needed
-            mat = fitz.Matrix(1, 1)
+            mat = fitz.Matrix(1, 1) # Use default resolution (72 dpi)
             pix = page.get_pixmap(matrix=mat)
-            output_filename = f"page_{page_num + 1}.png"
+            # Use PDF base name for output filename
+            output_filename = f"{pdf_base_name}_{page_num + 1}.png"
             output_path = os.path.join(output_dir, output_filename)
             pix.save(output_path)
             print(f"  - Saved: {output_filename}")
@@ -134,10 +136,21 @@ if __name__ == "__main__":
                 print("Continuing without sorting (will use the order provided by the OS).")
                 image_paths = image_paths_unsorted # Use original order on error
 
-            # Determine the output PDF filename
-            output_base_name = os.path.join(os.path.dirname(image_paths[0]), "combined")
+            # Determine the output PDF filename based on the first image's name pattern
+            first_image_name = os.path.basename(image_paths[0])
+            first_image_base, _ = os.path.splitext(first_image_name)
+            # Remove trailing numbers and common separators (like _ or -)
+            # This will attempt to find a common prefix for the filenames
+            output_prefix = re.sub(r'[_-]?\d+$', '', first_image_base)
+            # If the prefix becomes empty (e.g., filename was just "1.png"), use a default
+            if not output_prefix:
+                output_prefix = "combined"
+
+            output_dir_path = os.path.dirname(image_paths[0])
+            output_base_name = os.path.join(output_dir_path, output_prefix)
             output_pdf_path = output_base_name + ".pdf"
             count = 1
+            # Handle potential filename conflicts
             while os.path.exists(output_pdf_path):
                 output_pdf_path = f"{output_base_name}_{count}.pdf"
                 count += 1
