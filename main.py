@@ -82,91 +82,108 @@ def convert_png_to_pdf(image_paths, output_pdf_path):
 
 
 if __name__ == "__main__":
-    dropped_files = sys.argv[1:]
-
-    if not dropped_files:
+    if len(sys.argv) != 2:
         print("--------------------------------------------------")
         print("Usage:")
-        print("  Drag and drop one PDF file or one or more PNG files")
-        print("  onto this executable.")
+        print(f"  python {os.path.basename(sys.argv[0])} <target_folder>")
+        print("  or drag and drop a FOLDER onto the executable.")
+        print("\nDescription:")
+        print("  Processes files within the specified <target_folder>.")
+        print("  - If exactly one PDF file is found, it's converted to PNGs.")
+        print("  - If multiple PNG files are found, they are combined into a single PDF.")
         print("--------------------------------------------------")
         input("Press any key to exit...")
-        sys.exit(0)
+        sys.exit(1)
 
-    first_file_path = dropped_files[0]
-    file_name, file_ext = os.path.splitext(first_file_path)
-    file_ext = file_ext.lower()
+    target_folder = sys.argv[1]
+
+    if not os.path.isdir(target_folder):
+        print(f"Error: The specified path is not a valid directory: {target_folder}")
+        input("Press any key to exit...")
+        sys.exit(1)
+
+    pdf_files = []
+    png_files = []
+    print(f"Scanning folder: {target_folder}")
+    try:
+        for filename in os.listdir(target_folder):
+            file_path = os.path.join(target_folder, filename)
+            if os.path.isfile(file_path):
+                _, file_ext = os.path.splitext(filename)
+                file_ext = file_ext.lower()
+                if file_ext == ".pdf":
+                    pdf_files.append(file_path)
+                elif file_ext == ".png":
+                    png_files.append(file_path)
+    except Exception as e:
+        print(f"Error reading directory contents: {e}")
+        input("Press any key to exit...")
+        sys.exit(1)
 
     success = False
-    if file_ext == ".pdf":
+    num_pdf = len(pdf_files)
+    num_png = len(png_files)
+
+    # --- Determine operation mode based on folder content ---
+    if num_pdf == 1 and num_png == 0:
         # --- PDF -> PNG Mode ---
-        if len(dropped_files) > 1:
-            print("Error: For PDF to PNG conversion, please drag and drop only one PDF file at a time.")
-        elif not os.path.exists(first_file_path):
-            print(f"Error: The specified PDF file was not found: {first_file_path}")
-        else:
-            output_dir = os.path.join(os.path.dirname(first_file_path), os.path.basename(file_name) + "_png")
-            success = convert_pdf_to_png(first_file_path, output_dir)
+        pdf_path = pdf_files[0]
+        pdf_base_name = os.path.splitext(os.path.basename(pdf_path))[0]
+        output_dir = os.path.join(target_folder, pdf_base_name + "_png")
+        print(f"Mode: PDF -> PNG")
+        success = convert_pdf_to_png(pdf_path, output_dir)
 
-    elif file_ext == ".png":
+    elif num_png > 1 and num_pdf == 0:
         # --- PNG -> PDF Mode ---
-        image_paths_unsorted = []
-        valid_pngs = True
-        for f_path in dropped_files:
-            if not os.path.splitext(f_path)[1].lower() == ".png":
-                print(f"Error: '{os.path.basename(f_path)}' is not a PNG file. Please drag and drop only PNG files.")
-                valid_pngs = False
-                break
-            elif not os.path.exists(f_path):
-                print(f"Error: The specified PNG file was not found: {f_path}")
-                valid_pngs = False
-                break
-            else:
-                image_paths_unsorted.append(f_path)
+        print(f"Mode: PNG -> PDF")
+        image_paths_unsorted = png_files
 
-        if valid_pngs and image_paths_unsorted:
-            # <<< Sort the file path list using natural sort >>>
-            print("Sorting files by name (natural sort)...")
-            try:
-                image_paths = sorted(image_paths_unsorted, key=natural_sort_key)
-                print("Sorted file order (this will be the PDF page order):")
-                for i, p in enumerate(image_paths):
-                    print(f"  {i+1}: {os.path.basename(p)}")
-            except Exception as sort_e:
-                print(f"Error: An error occurred during file sorting: {sort_e}")
-                print("Continuing without sorting (will use the order provided by the OS).")
-                image_paths = image_paths_unsorted # Use original order on error
+        # <<< Sort the file path list using natural sort >>>
+        print("Sorting PNG files by name (natural sort)...")
+        try:
+            image_paths = sorted(image_paths_unsorted, key=natural_sort_key)
+            print("Sorted file order (this will be the PDF page order):")
+            for i, p in enumerate(image_paths):
+                print(f"  {i+1}: {os.path.basename(p)}")
+        except Exception as sort_e:
+            print(f"Error: An error occurred during file sorting: {sort_e}")
+            print("Continuing without sorting (will use the order provided by the OS).")
+            image_paths = image_paths_unsorted # Use original order on error
 
-            # Determine the output PDF filename based on the first image's name pattern
-            first_image_name = os.path.basename(image_paths[0])
-            first_image_base, _ = os.path.splitext(first_image_name)
-            # Remove trailing numbers and common separators (like _ or -)
-            # This will attempt to find a common prefix for the filenames
-            output_prefix = re.sub(r'[_-]?\d+$', '', first_image_base)
-            # If the prefix becomes empty (e.g., filename was just "1.png"), use a default
-            if not output_prefix:
-                output_prefix = "combined"
+        # Determine the output PDF filename based on the first image's name pattern
+        first_image_name = os.path.basename(image_paths[0])
+        first_image_base, _ = os.path.splitext(first_image_name)
+        output_prefix = re.sub(r'[_-]?\\d+$', '', first_image_base)
+        if not output_prefix:
+            output_prefix = "combined" # Default name if prefix is empty
 
-            output_dir_path = os.path.dirname(image_paths[0])
-            output_base_name = os.path.join(output_dir_path, output_prefix)
-            output_pdf_path = output_base_name + ".pdf"
-            count = 1
-            # Handle potential filename conflicts
-            while os.path.exists(output_pdf_path):
-                output_pdf_path = f"{output_base_name}_{count}.pdf"
-                count += 1
+        output_base_name = os.path.join(target_folder, output_prefix) # Output in the target folder
+        output_pdf_path = output_base_name + ".pdf"
+        count = 1
+        # Handle potential filename conflicts
+        while os.path.exists(output_pdf_path):
+            output_pdf_path = f"{output_base_name}_{count}.pdf"
+            count += 1
 
-            # Pass the sorted image_paths for PDF conversion
-            success = convert_png_to_pdf(image_paths, output_pdf_path)
+        # Pass the sorted image_paths for PDF conversion
+        success = convert_png_to_pdf(image_paths, output_pdf_path)
 
     else:
-        print(f"Error: Unsupported file format: '{os.path.basename(first_file_path)}'")
-        print("Please drag and drop a PDF file (.pdf) or PNG files (.png).")
+        # --- Invalid file combination ---
+        print("Error: The folder must contain either exactly one PDF file or multiple PNG files.")
+        if num_pdf > 0:
+            print(f"  - Found {num_pdf} PDF file(s): {[os.path.basename(f) for f in pdf_files]}")
+        if num_png > 0:
+            print(f"  - Found {num_png} PNG file(s): {[os.path.basename(f) for f in png_files]}")
+        if num_pdf == 0 and num_png == 0:
+            print("  - No PDF or PNG files found in the specified folder.")
+        elif num_png == 1 and num_pdf == 0:
+             print("  - Found only one PNG file. Need multiple PNGs to combine into a PDF.")
 
     # Display message based on processing result and wait before closing the window
     if success:
         print("Processing completed successfully.")
     else:
-        print("An error occurred during processing.")
+        print("An error occurred during processing or the folder content was invalid.")
 
     input("Press any key to exit...")
