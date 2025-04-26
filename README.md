@@ -9,5 +9,9 @@ pyinstaller --onefile main.py
 ## run
 
 ```bash
-./dist/main test.pdf
+./dist/main ./downloads
+```
+
+```bash
+python main.py ./downloads
 ```

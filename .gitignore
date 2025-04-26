@@ -176,3 +176,5 @@ cython_debug/
 *.pdf
 *.png
 *.pdf_png
+output/
+downloads/
