@@ -24,8 +24,9 @@ def convert_pdf_to_png(pdf_path, output_dir):
         pdf_base_name = os.path.splitext(os.path.basename(pdf_path))[0] # Get PDF base name
         for page_num in range(len(doc)):
             page = doc.load_page(page_num)
-            # Default resolution. Change to (2, 2) etc. if higher resolution is needed
-            mat = fitz.Matrix(1, 1) # Use default resolution (72 dpi)
+            # 解像度を上げるためにマトリックスの値を変更 (例: 4x4 = 288 DPI)
+            # 値を大きくすると画質は向上するが、ファイルサイズも大きくなる
+            mat = fitz.Matrix(4, 4)
             pix = page.get_pixmap(matrix=mat)
             # Use PDF base name for output filename
             output_filename = f"{pdf_base_name}_{page_num + 1}.png"
