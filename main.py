@@ -24,8 +24,8 @@ def convert_pdf_to_png(pdf_path, output_dir):
         pdf_base_name = os.path.splitext(os.path.basename(pdf_path))[0] # Get PDF base name
         for page_num in range(len(doc)):
             page = doc.load_page(page_num)
-            # 解像度を上げるためにマトリックスの値を変更 (例: 4x4 = 288 DPI)
-            # 値を大きくすると画質は向上するが、ファイルサイズも大きくなる
+            # Increase the matrix values to improve resolution (e.g., 4x4 = 288 DPI)
+            # Higher values improve image quality but increase file size
             mat = fitz.Matrix(4, 4)
             pix = page.get_pixmap(matrix=mat)
             # Use PDF base name for output filename
@@ -197,8 +197,8 @@ if __name__ == "__main__":
             print(f"    PDF(s): {[os.path.basename(f) for f in pdf_files]}")
             print(f"    PNG(s): {[os.path.basename(f) for f in png_files]}")
         elif num_pdf == 0 and num_png == 1:
-             print("  - Found only one PNG file. Need multiple PNGs to combine into a PDF.")
-             print(f"    PNG: {os.path.basename(png_files[0])}")
+            print("  - Found only one PNG file. Need multiple PNGs to combine into a PDF.")
+            print(f"    PNG: {os.path.basename(png_files[0])}")
         elif num_pdf == 0 and num_png == 0:
             print("  - No PDF or PNG files found in the specified folder.")
         # The case num_pdf > 1 and num_png == 0 is now handled above
